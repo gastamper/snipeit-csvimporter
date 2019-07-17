@@ -16,16 +16,15 @@ def patch(snipeid, item, data):
      if newjs['status'] != 'error':
          logger.info(f"Updated Snipe asset number {snipeid}, field {str(item)} with {str(data)}")
          logger.debug(f"{newjs}")
-     # Track updates by returning 1, unfortunately
-         return 1
+         return newjs
      else:
          logger.error(f"Failed to update Snipe asset number {snipeid}: {newjs['messages']}")
-         return 0
+         return 1
 
 def sniperequest(URL, QUERYSTRING):
    try: id = requests.request("GET", URL, headers=header, params=QUERYSTRING) 
-   except:
-       logger.error("Error connecting to Snipe: %s" % exc_info()[1])
+   except requests.exceptions.RequestException as e:
+       logger.error("Error connecting to Snipe: %s" % e)
        exit(1)
    js = json.loads(id.text)
    if 'error' in js:
@@ -54,14 +53,7 @@ try:
         logger.error("CSV file must include 'Item Names' column for lookup in Snipe-IT.")
         exit(1)
 # Build dictionary of Snipe internal fields
-    querystring = {"search":""}
-    header = {'Authorization': "Bearer " + API_TOKEN, 'Accept': "application/json", 'Content-type':"application/json" }
-    querytype = "fieldsets"
-    try: id = requests.request("GET", SNIPE_URL + "/api/v1/fieldsets", headers=header, params=querystring)
-    except Error as e: 
-        logger.debug(f"{e}")
-        exit(1)
-    js = json.loads(id.text)
+    js = sniperequest(SNIPE_URL + "/api/v1/fieldsets", {"search":""})
     snipefields = {}
     for count in js['rows']:
         for field in count['fields']['rows']:
@@ -95,8 +87,6 @@ try:
                         if js['rows'][0]['custom_fields'][entry]['value'] != row[entry]:
                             logger.info(f"{row['Item Name']}: Snipe and CSV don't match: CSV has {row[entry]}, Snipe has {js['rows'][0]['custom_fields'][entry]['value']}")
                             result = patch(snipeid, js['rows'][0]['custom_fields'][entry]['field'], row[entry])
-                            if result != 1:
-                                logger.error("That didn't work")
                         else: logger.info(f"{row['Item Name']}: Snipe and CSV match for {entry}: {row[entry]}")
                 elif entry in js['rows'][0]:
                         logger.info("Fix this")
