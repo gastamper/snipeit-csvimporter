@@ -89,9 +89,9 @@ try:
             from time import sleep
             sleep(10)
             js  = sniperequest(SNIPE_URL + "/api/v1/hardware", querystring)
-            if 'error' in js and js['error'] is 429:
-                logger.error("Got 429 again, failing out")
-                continue
+            if 'error' in js and js['messages'] == 429:
+                logger.error("Got 429 (API overload) again; please wait and try later")
+                exit(2)
         elif js['total'] > 1:
             buf = ','.join(item['name'] + " (" + item['asset_tag'] + ")" for item in js['rows'])
             logger.error(f"Got multiple entries for {row['Item Name']}: {buf}")
