@@ -1,12 +1,11 @@
-import csv, requests, json, logging, configparser
+import csv, requests, json, logging, configparser, pprint
 from sys import exit, exc_info, argv
 from optparse import OptionParser
 
 parser = OptionParser()
 parser.add_option("-v", "--verbose", dest="verbose", action="store_true", default=False, help="set verbosity level")
 (options, args) = parser.parse_args()
-print(f"{options} {args}")
-#exit(0)
+
 config = configparser.ConfigParser()
 config['DEFAULT'] = { 'SNIPE_URL': "https://your_snipe_url/",
                       'API_TOKEN': "YOUR_SNIPE_API_TOKEN_HERE" }
@@ -46,7 +45,10 @@ logger = logging.getLogger()
 streamhandler = logging.StreamHandler()
 streamhandler.setFormatter(logformatter)
 logger.addHandler(streamhandler)
-logger.setLevel(logging.DEBUG)
+if options.verbose is True:
+    logger.setLevel(logging.DEBUG)
+else:
+    logger.setLevel(logging.INFO)
 
 if len(argv) is 1:
     logger.error(f"Usage: {argv[0]} [CSV file]")
@@ -56,7 +58,7 @@ try:
   with open(argv[1]) as csv_file:
     csv_reader = csv.DictReader(csv_file)
     if 'Item Name' not in csv_reader.fieldnames:
-        logger.error("CSV file must include 'Item Names' column for lookup in Snipe-IT.")
+        logger.error("CSV file must include 'Item Name' column for lookup in Snipe-IT.")
         exit(1)
 # Build dictionary of Snipe internal fields
     js = sniperequest(SNIPE_URL + "/api/v1/fieldsets", {"search":""})
@@ -73,8 +75,8 @@ try:
     for count in js['rows']:
         for field in count['fields']['rows']:
             snipefields[field['name']] = field['db_column_name']
-    logger.debug("Snipe fields built: %s" % snipefields)
-
+    pp = pprint.PrettyPrinter(indent=4)
+    logger.debug("Snipe fields built: \r\n%s" % pp.pformat(snipefields))
     logger.debug("Snipe update:")
     for row in csv_reader:
         querystring = {"offset":"0","search":row['Item Name']}
@@ -85,13 +87,8 @@ try:
             snipeid = js['rows'][0]['id']
             logger.debug(f"Snipe-IT ID for {row['Item Name']} is {snipeid}")
         elif 'status' in js and 'error' in js['status'] and js['messages'] == 429:
-            logger.info("Got error 429 (API overload), waiting.")
-            from time import sleep
-            sleep(10)
-            js  = sniperequest(SNIPE_URL + "/api/v1/hardware", querystring)
-            if 'error' in js and js['messages'] == 429:
-                logger.error("Got 429 (API overload) again; please wait and try later")
-                exit(2)
+            logger.info("Got error 429 (API rate limited), exiting.")
+            exit(2)
         elif js['total'] > 1:
             buf = ','.join(item['name'] + " (" + item['asset_tag'] + ")" for item in js['rows'])
             logger.error(f"Got multiple entries for {row['Item Name']}: {buf}")
