@@ -1,6 +1,12 @@
 import csv, requests, json, logging, configparser
 from sys import exit, exc_info, argv
+from optparse import OptionParser
 
+parser = OptionParser()
+parser.add_option("-v", "--verbose", dest="verbose", action="store_true", default=False, help="set verbosity level")
+(options, args) = parser.parse_args()
+print(f"{options} {args}")
+#exit(0)
 config = configparser.ConfigParser()
 config['DEFAULT'] = { 'SNIPE_URL': "https://your_snipe_url/",
                       'API_TOKEN': "YOUR_SNIPE_API_TOKEN_HERE" }
@@ -15,7 +21,7 @@ def patch(snipeid, item, data):
      newjs = json.loads(patch.text)
      if newjs['status'] != 'error':
          logger.info(f"Updated Snipe asset number {snipeid}, field {str(item)} with {str(data)}")
-         logger.debug(f"{newjs}")
+#         logger.debug(f"{newjs}")
          return newjs
      else:
          logger.error(f"Failed to update Snipe asset number {snipeid}: {newjs['messages']}")
@@ -55,6 +61,15 @@ try:
 # Build dictionary of Snipe internal fields
     js = sniperequest(SNIPE_URL + "/api/v1/fieldsets", {"search":""})
     snipefields = {}
+# Catch API error 429 (API overload)
+    if not 'rows' in js:
+        if 'status' in js and 'error' in js['status']:
+            logger.error("Received error {js['messages']}")
+            exit(2)
+        else:
+            logger.error("Undefined error")
+            exit(2)
+# Continue processing
     for count in js['rows']:
         for field in count['fields']['rows']:
             snipefields[field['name']] = field['db_column_name']
@@ -69,11 +84,22 @@ try:
         if 'total' in js and js['total'] == 1:
             snipeid = js['rows'][0]['id']
             logger.debug(f"Snipe-IT ID for {row['Item Name']} is {snipeid}")
-        else:
+        elif 'status' in js and 'error' in js['status'] and js['messages'] == 429:
+            logger.info("Got error 429 (API overload), waiting.")
+            from time import sleep
+            sleep(10)
+            js  = sniperequest(SNIPE_URL + "/api/v1/hardware", querystring)
+            if 'error' in js and js['error'] is 429:
+                logger.error("Got 429 again, failing out")
+                continue
+        elif js['total'] > 1:
+            buf = ','.join(item['name'] + " (" + item['asset_tag'] + ")" for item in js['rows'])
+            logger.error(f"Got multiple entries for {row['Item Name']}: {buf}")
+            continue
+        else:    
             snipeid = "Unknown"
-            logger.debug(js)
             logger.error(f"Couldn't find {row['Item Name']} in Snipe")
-            break
+            continue
 # Actual update logic
         fields = (x for x in csv_reader.fieldnames if "Item Name" not in x)
         for entry in fields:
@@ -87,6 +113,8 @@ try:
                         if js['rows'][0]['custom_fields'][entry]['value'] != row[entry]:
                             logger.info(f"{row['Item Name']}: Snipe and CSV don't match: CSV has {row[entry]}, Snipe has {js['rows'][0]['custom_fields'][entry]['value']}")
                             result = patch(snipeid, js['rows'][0]['custom_fields'][entry]['field'], row[entry])
+                            if result != 1:
+                                logger.info(f"{row['Item Name']} updated.")
                         else: logger.info(f"{row['Item Name']}: Snipe and CSV match for {entry}: {row[entry]}")
                 elif entry in js['rows'][0]:
                         logger.info("Fix this")
