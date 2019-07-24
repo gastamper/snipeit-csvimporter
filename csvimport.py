@@ -4,6 +4,8 @@ from optparse import OptionParser
 
 parser = OptionParser()
 parser.add_option("-v", "--verbose", dest="verbose", action="store_true", default=False, help="set verbosity level")
+parser.add_option("-d", "--dry-run", dest="dryrun", action="store_true", default=False, help="run without executing changes")
+parser.add_option("-o", "--overwrite", dest="overwrite", action="store_true", default=False, help="overwrite in case of multiple entries")
 (options, args) = parser.parse_args()
 
 config = configparser.ConfigParser()
@@ -15,12 +17,14 @@ API_TOKEN = config['DEFAULT']['API_TOKEN']
 
 header = {'Authorization': "Bearer " + API_TOKEN, 'Accept': "application/json", 'Content-type':"application/json" }
 def patch(snipeid, item, data):
+     if options.dryrun is True:
+         logger.info(f"Dry run: Would have tried to update Snipe asset number {snipeid}, field {str(item)} with {str(data)}")
+         return 0
      payload = "{\"%s\":\"%s\"}" % (str(item), str(data))
      patch = requests.request("PATCH", SNIPE_URL + "/api/v1/hardware/" + str(snipeid), headers=header, data=payload)
      newjs = json.loads(patch.text)
      if newjs['status'] != 'error':
          logger.info(f"Updated Snipe asset number {snipeid}, field {str(item)} with {str(data)}")
-#         logger.debug(f"{newjs}")
          return newjs
      else:
          logger.error(f"Failed to update Snipe asset number {snipeid}: {newjs['messages']}")
@@ -91,8 +95,12 @@ try:
             exit(2)
         elif js['total'] > 1:
             buf = ','.join(item['name'] + " (" + item['asset_tag'] + ")" for item in js['rows'])
-            logger.error(f"Got multiple entries for {row['Item Name']}: {buf}")
-            continue
+            if options.overwrite is False:
+                logger.error(f"Skipping due to multiple entries for {row['Item Name']}: {buf}")
+                continue
+            else:
+                logger.info(f"Got multiple entries for {row['Item Name']}: {buf}")
+                logger.info("Option overwrite enabled, overwriting data for entries.")
         else:    
             snipeid = "Unknown"
             logger.error(f"Couldn't find {row['Item Name']} in Snipe")
@@ -111,7 +119,7 @@ try:
                             logger.info(f"{row['Item Name']}: Snipe and CSV don't match: CSV has {row[entry]}, Snipe has {js['rows'][0]['custom_fields'][entry]['value']}")
                             result = patch(snipeid, js['rows'][0]['custom_fields'][entry]['field'], row[entry])
                             if result != 1:
-                                logger.info(f"{row['Item Name']} updated.")
+                                logger.info(f"{row['Item Name']} updated {snipefields[entry]} with {row[entry]}.")
                         else: logger.info(f"{row['Item Name']}: Snipe and CSV match for {entry}: {row[entry]}")
                 elif entry in js['rows'][0]:
                         logger.info("Fix this")
