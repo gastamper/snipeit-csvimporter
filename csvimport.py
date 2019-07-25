@@ -1,3 +1,4 @@
+#!/usr/bin/env python36
 import csv, requests, json, logging, configparser, pprint
 from sys import exit, exc_info, argv
 from optparse import OptionParser
@@ -27,7 +28,11 @@ def patch(snipeid, item, data):
          logger.info(f"Updated Snipe asset number {snipeid}, field {str(item)} with {str(data)}")
          return newjs
      else:
-         logger.error(f"Failed to update Snipe asset number {snipeid}: {newjs['messages']}")
+         if newjs['messages'] is 429:
+             logger.error("Received error 429: API rate limited, exiting")
+             exit(4)
+         else:
+             logger.error(f"Failed to update Snipe asset number {snipeid}: {newjs['messages']}")
          return 1
 
 def sniperequest(URL, QUERYSTRING):
@@ -70,7 +75,10 @@ try:
 # Catch API error 429 (API overload)
     if not 'rows' in js:
         if 'status' in js and 'error' in js['status']:
-            logger.error("Received error {js['messages']}")
+            if js['messages'] is 429:
+                logger.error("Received error 429: API rate limited, exiting")
+            else:
+                logger.error(f"Received error {js['messages']}")
             exit(2)
         else:
             logger.error("Undefined error")
@@ -101,6 +109,7 @@ try:
             else:
                 logger.info(f"Got multiple entries for {row['Item Name']}: {buf}")
                 logger.info("Option overwrite enabled, overwriting data for entries.")
+                snipeid = js['rows'][0]['id']
         else:    
             snipeid = "Unknown"
             logger.error(f"Couldn't find {row['Item Name']} in Snipe")
