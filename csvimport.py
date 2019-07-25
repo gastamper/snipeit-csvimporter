@@ -48,6 +48,30 @@ def sniperequest(URL, QUERYSTRING):
        exit(1)
    return(js)
 
+def update(row, js, fields, snipeid):
+    for entry in fields:
+# Blank CSV entries should be set to None as that's what Snipe returns for empty fields
+        if row[entry] is '': row[entry] = None
+# Check each field in Snipe-IT against CSV
+        if entry in snipefields:
+            logger.debug(f"{row['Item Name']}: Found {entry} in Snipe-IT fields {snipefields[entry]}")
+            #TODO: check if entry in Snipe matches CSV, if so ignore else patch
+            for x in js['rows']:
+                if x['id'] == snipeid:
+                    if entry in x['custom_fields']:
+                            if x['custom_fields'][entry]['value'] != row[entry]:
+                                logger.info(f"{row['Item Name']}: Snipe and CSV don't match: CSV has {row[entry]}, Snipe has {js['rows'][0]['custom_fields'][entry]['value']}")
+                                result = patch(snipeid, js['rows'][0]['custom_fields'][entry]['field'], row[entry])
+                                if result != 1:
+                                    logger.info(f"{row['Item Name']} updated {snipefields[entry]} with {row[entry]}.")
+                            else: logger.info(f"{row['Item Name']}: Snipe and CSV match for {entry}: {row[entry]}")
+                    elif entry in x:
+                        logger.info("Fix this")
+                    else:
+                        logger.error(f"{row['Item Name']}: Couldn't find field {entry} in asset fields")
+        else:
+            logger.error(f"Couldn't find {entry} in Snipe-IT fields")
+
 # Logger setup
 logformatter = logging.Formatter(fmt='[%(asctime)-15s %(levelname)6s] %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
 logger = logging.getLogger()
@@ -101,6 +125,7 @@ try:
         elif 'status' in js and 'error' in js['status'] and js['messages'] == 429:
             logger.info("Got error 429 (API rate limited), exiting.")
             exit(2)
+# Multiple entries in Snipe for same item
         elif js['total'] > 1:
             buf = ','.join(item['name'] + " (" + item['asset_tag'] + ")" for item in js['rows'])
             if options.overwrite is False:
@@ -109,32 +134,17 @@ try:
             else:
                 logger.info(f"Got multiple entries for {row['Item Name']}: {buf}")
                 logger.info("Option overwrite enabled, overwriting data for entries.")
-                snipeid = js['rows'][0]['id']
+                for x in range(len(js['rows'])):
+                    snipeid = js['rows'][x]['id']
+                    fields = (x for x in csv_reader.fieldnames if "Item Name" not in x)
+                    update(row, js, fields, snipeid)
+                continue
         else:    
             snipeid = "Unknown"
             logger.error(f"Couldn't find {row['Item Name']} in Snipe")
             continue
 # Actual update logic
         fields = (x for x in csv_reader.fieldnames if "Item Name" not in x)
-        for entry in fields:
-# Blank CSV entries should be set to None as that's what Snipe returns for empty fields
-            if row[entry] is '': row[entry] = None
-# Check each field in Snipe-IT against CSV
-            if entry in snipefields:
-                logger.debug(f"{row['Item Name']}: Found {entry} in Snipe-IT fields {snipefields[entry]}")
-                #TODO: check if entry in Snipe matches CSV, if so ignore else patch
-                if entry in js['rows'][0]['custom_fields']:
-                        if js['rows'][0]['custom_fields'][entry]['value'] != row[entry]:
-                            logger.info(f"{row['Item Name']}: Snipe and CSV don't match: CSV has {row[entry]}, Snipe has {js['rows'][0]['custom_fields'][entry]['value']}")
-                            result = patch(snipeid, js['rows'][0]['custom_fields'][entry]['field'], row[entry])
-                            if result != 1:
-                                logger.info(f"{row['Item Name']} updated {snipefields[entry]} with {row[entry]}.")
-                        else: logger.info(f"{row['Item Name']}: Snipe and CSV match for {entry}: {row[entry]}")
-                elif entry in js['rows'][0]:
-                        logger.info("Fix this")
-                else:
-                    logger.error(f"{row['Item Name']}: Couldn't find field {entry} in asset fields")
-            else:
-                logger.error(f"Couldn't find {entry} in Snipe-IT fields")
+        update(row, js, fields, snipeid)
 except IOError as e:
     logger.error(f"{e}")
