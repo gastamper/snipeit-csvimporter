@@ -64,7 +64,7 @@ def update(row, js, fields, snipeid):
                                 result = patch(snipeid, js['rows'][0]['custom_fields'][entry]['field'], row[entry])
                                 if result != 1:
                                     logger.info(f"{row['Item Name']} updated {snipefields[entry]} with {row[entry]}.")
-                            else: logger.info(f"{row['Item Name']}: Snipe and CSV match for {entry}: {row[entry]}")
+                            else: logger.debug(f"{row['Item Name']}: Snipe and CSV match for {entry}: {row[entry]}")
                     elif entry in x:
                         logger.info("Fix this")
                     else:
