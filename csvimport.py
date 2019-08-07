@@ -120,7 +120,8 @@ try:
     for count in js['rows']:
         for field in count['fields']['rows']:
             snipefields[field['name']] = field['db_column_name']
-    snipefields.update({"Serial":"serial","Asset Tag":"asset_tag","Name":"name","Warranty Months":"warranty_months","Warranty Expires":"warranty_expires"})
+# Add easily importable built-in fields
+    snipefields.update({"Serial":"serial","Asset Tag":"asset_tag","Name":"name","Warranty Months":"warranty_months",'Order Number':'order_number','Purchase Cost':'purchase cost','Purchase Date':'purchase_date','Notes':'notes'})
     pp = pprint.PrettyPrinter(indent=4)
     logger.debug("Snipe fields built: \r\n%s" % pp.pformat(snipefields))
     logger.debug("Snipe update:")
