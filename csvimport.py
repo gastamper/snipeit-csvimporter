@@ -50,7 +50,7 @@ def sniperequest(URL, QUERYSTRING):
    return(js)
 
 def update(row, js, fields, snipeid):
-    builtins = ['name','asset_tag','serial','warranty_months','warranty_expires']
+    builtins = {'Name':'name','Asset Tag':'asset_tag','Serial':'serial','Warranty Months':'warranty_months','Order Number':'order_number','Purchase Cost':'purchase cost','Purchase Date':'purchase_date','Notes':'notes'}
     for entry in fields:
 # Blank CSV entries should be set to None as that's what Snipe returns for empty fields
         if row[entry] is '': row[entry] = None
@@ -71,12 +71,12 @@ def update(row, js, fields, snipeid):
                                     logger.info(f"{row['Item Name']} updated {snipefields[entry]} with {row[entry]}.")
                             else: logger.debug(f"{row['Item Name']}: Snipe and CSV match for {entry}: {row[entry]}")
 # Built-in field update
-                    elif entry.lower() in builtins:
-                        if x[entry.lower()] != row[entry]:
-                            if js['rows'][0][entry.lower()] is '': val = 'None'
-                            else: val = js['rows'][0][entry.lower()]
+                    elif entry in builtins:
+                        if x[builtins[entry]] != row[entry]:
+                            if js['rows'][0][builtins[entry]] is '': val = 'None'
+                            else: val = js['rows'][0][builtins[entry]]
                             logger.info(f"{row['Item Name']}: Snipe and CSV don't match: CSV has {row[entry]}, Snipe has {val}")
-                            result = patch(snipeid, entry.lower(), row[entry])
+                            result = patch(snipeid, builtins[entry], row[entry])
                             if result != 1:
                                 logger.info(f"{row['Item Name']} updated {snipefields[entry]} with {row[entry]}.")
                             else: logger.debug(f"{row['Item Name']}: Snipe and CSV match for {entry}: {row[entry]}")
