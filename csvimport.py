@@ -1,12 +1,13 @@
 #!/usr/bin/env python36
 import csv, requests, json, logging, configparser, pprint
-from sys import exit, exc_info, argv
+from sys import exit, exc_info
 from optparse import OptionParser
 
 parser = OptionParser()
 parser.add_option("-v", "--verbose", dest="verbose", action="store_true", default=False, help="set verbosity level")
 parser.add_option("-d", "--dry-run", dest="dryrun", action="store_true", default=False, help="run without executing changes")
 parser.add_option("-o", "--overwrite", dest="overwrite", action="store_true", default=False, help="overwrite in case of multiple entries")
+parser.add_option("-f", "--file", dest="file", help="CSV file to read data from", metavar="FILE")
 (options, args) = parser.parse_args()
 
 config = configparser.ConfigParser()
@@ -95,12 +96,8 @@ if options.verbose is True:
 else:
     logger.setLevel(logging.INFO)
 
-if len(argv) is 1:
-    logger.error(f"Usage: {argv[0]} [CSV file]")
-    exit(1)
-
 try:
-  with open(argv[1]) as csv_file:
+  with open(options.file) as csv_file:
     csv_reader = csv.DictReader(csv_file)
     if 'Item Name' not in csv_reader.fieldnames:
         logger.error("CSV file must include 'Item Name' column for lookup in Snipe-IT.")
