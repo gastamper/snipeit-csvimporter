@@ -1,10 +1,10 @@
 # snipeit-csvimporter
-This project allows for updating assets in Snipe-IT from a CSV file using Item Name rather than asset tag as the key value, as is required for GUI-based CSV imports from within Snipe-IT.
+This project allows for updating assets in Snipe-IT from a CSV file using Item Name rather than asset tag as the key value, as is required for GUI-based CSV imports from within Snipe-IT.  Custom fields are well-supported; only serial number has been tested extensively from the available built-in fields (asset tag, serial, warranty_expires, warranty_months, name) 
 
 ## Current state:
 1. Updates to existing items work as expected.
 2. Updates to nonexistent items should fail gracefully.
-3. Creation of new items from CSV does *not* work and is not planned.
+3. Creation of new items from CSV is *not* planned.
 
 ## Requirements:
 1. A Snipe-IT server accessible from wherever the importer is running.
