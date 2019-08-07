@@ -49,6 +49,7 @@ def sniperequest(URL, QUERYSTRING):
    return(js)
 
 def update(row, js, fields, snipeid):
+    builtins = ['name','asset_tag','serial','warranty_months','warranty_expires']
     for entry in fields:
 # Blank CSV entries should be set to None as that's what Snipe returns for empty fields
         if row[entry] is '': row[entry] = None
@@ -58,15 +59,26 @@ def update(row, js, fields, snipeid):
             #TODO: check if entry in Snipe matches CSV, if so ignore else patch
             for x in js['rows']:
                 if x['id'] == snipeid:
+# Custom field update
                     if entry in x['custom_fields']:
                             if x['custom_fields'][entry]['value'] != row[entry]:
-                                logger.info(f"{row['Item Name']}: Snipe and CSV don't match: CSV has {row[entry]}, Snipe has {js['rows'][0]['custom_fields'][entry]['value']}")
+                                if js['rows'][0]['custom_fields'][entry]['value'] is '': val = 'None'
+                                else: val =  js['rows'][0]['custom_fields'][entry]['value']
+                                logger.info(f"{row['Item Name']}: Snipe and CSV don't match: CSV has {row[entry]}, Snipe has {val}")
                                 result = patch(snipeid, js['rows'][0]['custom_fields'][entry]['field'], row[entry])
                                 if result != 1:
                                     logger.info(f"{row['Item Name']} updated {snipefields[entry]} with {row[entry]}.")
                             else: logger.debug(f"{row['Item Name']}: Snipe and CSV match for {entry}: {row[entry]}")
-                    elif entry in x:
-                        logger.info("Fix this")
+# Built-in field update
+                    elif entry.lower() in builtins:
+                        if x[entry.lower()] != row[entry]:
+                            if js['rows'][0][entry.lower()] is '': val = 'None'
+                            else: val = js['rows'][0][entry.lower()]
+                            logger.info(f"{row['Item Name']}: Snipe and CSV don't match: CSV has {row[entry]}, Snipe has {val}")
+                            result = patch(snipeid, entry.lower(), row[entry])
+                            if result != 1:
+                                logger.info(f"{row['Item Name']} updated {snipefields[entry]} with {row[entry]}.")
+                            else: logger.debug(f"{row['Item Name']}: Snipe and CSV match for {entry}: {row[entry]}")
                     else:
                         logger.error(f"{row['Item Name']}: Couldn't find field {entry} in asset fields")
         else:
@@ -111,6 +123,7 @@ try:
     for count in js['rows']:
         for field in count['fields']['rows']:
             snipefields[field['name']] = field['db_column_name']
+    snipefields.update({"Serial":"serial"})
     pp = pprint.PrettyPrinter(indent=4)
     logger.debug("Snipe fields built: \r\n%s" % pp.pformat(snipefields))
     logger.debug("Snipe update:")
