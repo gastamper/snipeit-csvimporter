@@ -8,12 +8,15 @@ parser.add_option("-v", "--verbose", dest="verbose", action="store_true", defaul
 parser.add_option("-d", "--dry-run", dest="dryrun", action="store_true", default=False, help="run without executing changes")
 parser.add_option("-o", "--overwrite", dest="overwrite", action="store_true", default=False, help="overwrite in case of multiple entries")
 parser.add_option("-f", "--file", dest="file", help="CSV file to read data from", metavar="FILE")
+parser.add_option("-i", "--inifile", dest="inifile", help="File containing configuration data (config.ini)")
 (options, args) = parser.parse_args()
 
 config = configparser.ConfigParser()
 config['DEFAULT'] = { 'SNIPE_URL': "https://your_snipe_url/",
                       'API_TOKEN': "YOUR_SNIPE_API_TOKEN_HERE" }
-config.read('config.ini')
+if options.inifile is not None:
+    config.read(options.inifile)
+else: config.read("config.ini")
 SNIPE_URL = config['DEFAULT']['SNIPE_URL']
 API_TOKEN = config['DEFAULT']['API_TOKEN']
 
@@ -97,6 +100,9 @@ else:
     logger.setLevel(logging.INFO)
 
 try:
+  if options.file is None:
+      logger.error("Couldn't read from configuration file")
+      exit(1)
   with open(options.file) as csv_file:
     csv_reader = csv.DictReader(csv_file)
     if 'Item Name' not in csv_reader.fieldnames:
