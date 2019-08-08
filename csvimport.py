@@ -100,9 +100,6 @@ else:
     logger.setLevel(logging.INFO)
 
 try:
-  if options.file is None:
-      logger.error("Couldn't read from configuration file")
-      exit(1)
   with open(options.file) as csv_file:
     csv_reader = csv.DictReader(csv_file)
     if 'Item Name' not in csv_reader.fieldnames:
@@ -120,7 +117,7 @@ try:
                 logger.error(f"Received error {js['messages']}")
             exit(2)
         else:
-            logger.error("Undefined error")
+            logger.error(f"Undefined error: {js}")
             exit(2)
 # Continue processing
     for count in js['rows']:
