@@ -58,6 +58,10 @@ def update(row, js, fields, snipeid, header):
                             else: logger.debug(f"{row['Item Name']}: Snipe and CSV match for {entry}: {row[entry]}")
 # Built-in field update
                     elif entry in builtins:
+# Snipe API returns 'x months' for warranty_months, but only accepts an integer; workaround this
+                        if entry == 'Warranty Months' and x['warranty_months'] is not None: 
+                            x['warranty_months'] = x['warranty_months'][:-7]
+# Compare fields and update if they differ
                         if x[builtins[entry]] != row[entry]:
                             if js['rows'][0][builtins[entry]] is '': val = 'None'
                             else: val = js['rows'][0][builtins[entry]]
