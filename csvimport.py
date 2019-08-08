@@ -1,7 +1,8 @@
-#!/usr/bin/env python36
+#!/bin/env python36
 import csv, requests, json, logging, configparser, pprint, copy
 from sys import exit, exc_info
-from optparse import OptionParser
+from optparse import OptionParser,OptionGroup
+from os import access,R_OK
 
 def patch(snipeid, item, data, header):
      if options.dryrun is True:
@@ -78,19 +79,29 @@ if __name__ == "__main__":
     streamhandler.setFormatter(logformatter)
     logger.addHandler(streamhandler)
 
-    parser = OptionParser()
+    parser = OptionParser(usage = "usage: %prog [options] -f FILE")
     parser.add_option("-v", "--verbose", dest="verbose", action="store_true", default=False, help="set verbosity level")
     parser.add_option("-d", "--dry-run", dest="dryrun", action="store_true", default=False, help="run without executing changes")
     parser.add_option("-o", "--overwrite", dest="overwrite", action="store_true", default=False, help="overwrite in case of multiple entries")
-    parser.add_option("-f", "--file", dest="file", help="CSV file to read data from", metavar="FILE")
-    parser.add_option("-i", "--inifile", dest="inifile", help="File containing configuration data (config.ini)")
+    parser.add_option("-i", "--inifile", dest="inifile", help="File containing configuration data (default: config.ini)")
+    group = OptionGroup(parser, "Required Options")
+    group.add_option("-f", "--file", dest="file", help="CSV file to read data from", metavar="FILE")
+    parser.add_option_group(group)
     (options, args) = parser.parse_args()
 
     config = configparser.ConfigParser()
     config['DEFAULT'] = { 'SNIPE_URL': "https://your_snipe_url/",
                       'API_TOKEN': "YOUR_SNIPE_API_TOKEN_HERE" }
+    if options.file is None:
+        parser.print_help()
+        print("\r\nERROR: No CSV file supplied")
+        exit(1)
     if options.inifile is not None:
-        config.read(options.inifile)
+        if access(options.inifile, R_OK) is not False:
+            config.read(options.inifile)
+        else: 
+            print(f"ERROR: cannot read INI file: {options.inifile}")
+            exit(1)
     else: config.read("config.ini")
     SNIPE_URL = config['DEFAULT']['SNIPE_URL']
     API_TOKEN = config['DEFAULT']['API_TOKEN']
@@ -164,5 +175,8 @@ if __name__ == "__main__":
                 fields = (x for x in csv_reader.fieldnames if "Item Name" not in x)
                 update(row, js, fields, snipeid, header)
     except IOError as e:
+        logger.error(e)
+        exit(1)
+    except TypeError as e:
         logger.error(e)
         exit(1)
