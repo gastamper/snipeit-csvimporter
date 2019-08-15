@@ -13,7 +13,23 @@ This project allows for updating assets in Snipe-IT from a CSV file using Item N
 
 ## Basic usage:
 Your CSV must include an 'Item Name' column.  Any columns which don't exist in Snipe-IT should be ignored by the importer.
-Run csvimporter.py with your CSV file as the sole argument and things should just work.
+```
+Usage: csvimport.py [options] -f FILE
+
+Options:
+  -h, --help            show this help message and exit
+  -v, --verbose         set verbosity level
+  -d, --dry-run         run without executing changes
+  -o, --overwrite       overwrite in case of multiple entries
+  -i INIFILE, --inifile=INIFILE
+                        File containing configuration data (default:
+                        config.ini)
+
+  Required Options:
+    -f FILE, --file=FILE
+                        CSV file to read data from
+```
+
 
 ## Configuration
 1. Edit config.ini:
