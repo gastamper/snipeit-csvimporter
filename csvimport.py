@@ -51,7 +51,7 @@ def update(row, js, fields, snipeid, header):
                             if x['custom_fields'][entry]['value'] != row[entry]:
                                 if js['rows'][0]['custom_fields'][entry]['value'] is '': val = 'None'
                                 else: val =  js['rows'][0]['custom_fields'][entry]['value']
-                                logger.info(f"{row['Item Name']}: Snipe and CSV don't match: CSV has {row[entry]}, Snipe has {val}")
+                                logger.info(f"{row['Item Name']}: Snipe and CSV don't match for {entry}: CSV has {row[entry]}, Snipe has {val}")
                                 result = patch(snipeid, js['rows'][0]['custom_fields'][entry]['field'], row[entry], header)
                                 if result != 1:
                                     logger.info(f"{row['Item Name']} updated {snipefields[entry]} with {row[entry]}.")
@@ -144,6 +144,8 @@ if __name__ == "__main__":
             csv_reader = csv.DictReader(csv_file)
             if 'Item Name' not in csv_reader.fieldnames:
                 logger.error("CSV file must include 'Item Name' column for lookup in Snipe-IT.")
+                logger.error(f"Fields are: {csv_reader.fieldnames}")
+                exit(1)
 
 # Build dictionary of Snipe internal fields
             for row in csv_reader:
