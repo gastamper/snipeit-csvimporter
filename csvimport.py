@@ -3,6 +3,7 @@ import csv, requests, json, logging, configparser, pprint, copy
 from sys import exit, exc_info
 from optparse import OptionParser,OptionGroup
 from os import access,R_OK
+global snipemodels
 
 def patch(snipeid, item, data, header):
      if options.dryrun is True:
@@ -39,7 +40,8 @@ def update(row, js, fields, snipeid, header):
     builtins = {'Name':'name','Asset Tag':'asset_tag','Serial':'serial','Warranty Months':'warranty_months','Order Number':'order_number','Purchase Cost':'purchase cost','Purchase Date':'purchase_date','Notes':'notes'}
     for entry in fields:
 # Blank CSV entries should be set to None as that's what Snipe returns for empty fields
-        if row[entry] is '': row[entry] = None
+        if row[entry] is '': row[entry] = 'None'
+#        if row[entry] is '': row[entry] = 'None'
 # Check each field in Snipe-IT against CSV
         if entry in snipefields:
             logger.debug(f"{row['Item Name']}: Found {entry} in Snipe-IT fields {snipefields[entry]}")
@@ -48,9 +50,12 @@ def update(row, js, fields, snipeid, header):
                 if x['id'] == snipeid:
 # Custom field update
                     if entry in x['custom_fields']:
+                            if js['rows'][0]['custom_fields'][entry]['value'] is '': val = 'None'
+                            else: val =  js['rows'][0]['custom_fields'][entry]['value']
                             if x['custom_fields'][entry]['value'] != row[entry]:
-                                if js['rows'][0]['custom_fields'][entry]['value'] is '': val = 'None'
-                                else: val =  js['rows'][0]['custom_fields'][entry]['value']
+#                            if x['custom_fields'][entry]['value'] != row[entry]:
+#                                if js['rows'][0]['custom_fields'][entry]['value'] is '': val = 'None'
+#                                else: val =  js['rows'][0]['custom_fields'][entry]['value']
                                 logger.info(f"{row['Item Name']}: Snipe and CSV don't match for {entry}: CSV has {row[entry]}, Snipe has {val}")
                                 result = patch(snipeid, js['rows'][0]['custom_fields'][entry]['field'], row[entry], header)
                                 if result != 1:
@@ -69,7 +74,15 @@ def update(row, js, fields, snipeid, header):
                             result = patch(snipeid, builtins[entry], row[entry], header)
                             if result != 1:
                                 logger.info(f"{row['Item Name']} updated {snipefields[entry]} with {row[entry]}.")
-                            else: logger.debug(f"{row['Item Name']}: Snipe and CSV match for {entry}: {row[entry]}")
+                        else: logger.debug(f"{row['Item Name']}: Snipe and CSV match for {entry}: {row[entry]}")
+                    elif entry in ["Model"]:
+                        if x['model']['name'] != row[entry]:
+                            if row[entry] in snipemodels:
+                                logger.info(f"{row['Item Name']}: Snipe and CSV don't match: CSV has {row[entry]}, Snipe has {x['model']['name']}")
+                                result = patch(snipeid, "model_id", snipemodels[row[entry]], header)
+                                logger.info(f"{row['Item Name']} updated model with {row[entry]} (model {snipemodels[row[entry]]}).")
+                            else: logger.error(f"Model {row[entry]} not found in Snipe models list; skipping.")
+                        else: logger.debug(f"{row['Item Name']}: Snipe and CSV match for {entry}: {row[entry]}")
                     else:
                         logger.error(f"{row['Item Name']}: Couldn't find field {entry} in asset fields")
         else:
@@ -133,11 +146,18 @@ if __name__ == "__main__":
     for count in js['rows']:
         for field in count['fields']['rows']:
             snipefields[field['name']] = field['db_column_name']
-# Add easily importable built-in fields
-    snipefields.update({"Serial":"serial","Asset Tag":"asset_tag","Name":"name","Warranty Months":"warranty_months",'Order Number':'order_number','Purchase Cost':'purchase cost','Purchase Date':'purchase_date','Notes':'notes'})
+# Add easily importable built-in fields; note Model is functionally different
+    snipefields.update({"Serial":"serial","Asset Tag":"asset_tag","Name":"name","Warranty Months":"warranty_months",'Order Number':'order_number','Purchase Cost':'purchase cost','Purchase Date':'purchase_date','Notes':'notes','Model':'model'})
     pp = pprint.PrettyPrinter(indent=4)
     logger.debug("Snipe fields built: \r\n%s" % pp.pformat(snipefields))
     logger.debug("Snipe update:")
+
+# Build list of asset models 
+    modeljs = sniperequest(SNIPE_URL + "/api/v1/models", {"search":""}, header)
+    snipemodels = {}
+    for item in modeljs['rows']:
+        logger.debug(f"Adding {item['name']} with id {item['id']} to model list")
+        snipemodels.update({item['name']:item['id']})
 
     try:
         with open(options.file) as csv_file:
