@@ -85,6 +85,9 @@ def update(row, js, fields, snipeid, header):
                         else: logger.debug(f"{row['Item Name']}: Snipe and CSV match for {entry}: {row[entry]}")
                     else:
                         logger.error(f"{row['Item Name']}: Couldn't find field {entry} in asset fields")
+# Manufacturer is auto-derived by Snipe-IT from model unless creating a new model.
+        elif entry == 'Manufacturer':
+            pass
         else:
             logger.error(f"Couldn't find {entry} in Snipe-IT fields")
 
