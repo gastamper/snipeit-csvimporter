@@ -68,6 +68,10 @@ def update(row, js, fields, snipeid, header):
                             x['warranty_months'] = x['warranty_months'][:-7]
 # Compare fields and update if they differ
                         if x[builtins[entry]] != row[entry]:
+# Penguin Computing doesn't update BIOS to include serial, so their SN and assume you kept Snipe up to date yourself
+                            if entry in ["Serial"] and row[entry] == '01234567890123456789AB':
+                                logger.info("Skipping invalid serial 01234567890123456789AB")
+                                continue
                             if js['rows'][0][builtins[entry]] is '': val = 'None'
                             else: val = js['rows'][0][builtins[entry]]
                             logger.info(f"{row['Item Name']}: Snipe and CSV don't match: CSV has {row[entry]}, Snipe has {val}")
