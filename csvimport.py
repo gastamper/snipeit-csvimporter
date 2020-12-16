@@ -87,6 +87,7 @@ def update(row, js, fields, snipeid, header):
                         logger.error(f"{row['Item Name']}: Couldn't find field {entry} in asset fields")
 # Manufacturer is auto-derived by Snipe-IT from model unless creating a new model.
         elif entry == 'Manufacturer':
+            logger.error("Snipe-IT automatically derives Manufacturer from Model; skipping Manufacturer column")
             pass
         else:
             logger.error(f"Couldn't find {entry} in Snipe-IT fields")
