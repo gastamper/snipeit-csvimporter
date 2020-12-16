@@ -41,7 +41,6 @@ def update(row, js, fields, snipeid, header):
     for entry in fields:
 # Blank CSV entries should be set to None as that's what Snipe returns for empty fields
         if row[entry] is '': row[entry] = 'None'
-#        if row[entry] is '': row[entry] = 'None'
 # Check each field in Snipe-IT against CSV
         if entry in snipefields:
             logger.debug(f"{row['Item Name']}: Found {entry} in Snipe-IT fields {snipefields[entry]}")
@@ -53,9 +52,6 @@ def update(row, js, fields, snipeid, header):
                             if js['rows'][0]['custom_fields'][entry]['value'] is '': val = 'None'
                             else: val =  js['rows'][0]['custom_fields'][entry]['value']
                             if x['custom_fields'][entry]['value'] != row[entry]:
-#                            if x['custom_fields'][entry]['value'] != row[entry]:
-#                                if js['rows'][0]['custom_fields'][entry]['value'] is '': val = 'None'
-#                                else: val =  js['rows'][0]['custom_fields'][entry]['value']
                                 logger.info(f"{row['Item Name']}: Snipe and CSV don't match for {entry}: CSV has {row[entry]}, Snipe has {val}")
                                 result = patch(snipeid, js['rows'][0]['custom_fields'][entry]['field'], row[entry], header)
                                 if result != 1:
