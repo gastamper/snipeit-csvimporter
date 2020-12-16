@@ -133,7 +133,6 @@ if __name__ == "__main__":
     header = {'Authorization': "Bearer " + API_TOKEN, 'Accept': "application/json", 'Content-type':"application/json" }
 # Build dictionary of Snipe internal fields
     js = sniperequest(SNIPE_URL + "/api/v1/fieldsets", {"search":""}, header)
-    snipefields = {}
 # Catch API error 429 (API overload)
     if not 'rows' in js:
         if 'status' in js and 'error' in js['status']:
@@ -146,6 +145,7 @@ if __name__ == "__main__":
             logger.error(f"Undefined error: {js}")
             exit(2)
 # Continue processing
+    snipefields = {}
     for count in js['rows']:
         for field in count['fields']['rows']:
             snipefields[field['name']] = field['db_column_name']
